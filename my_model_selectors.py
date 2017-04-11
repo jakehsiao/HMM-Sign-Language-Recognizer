@@ -121,14 +121,16 @@ class SelectorDIC(ModelSelector):
             logD = 0
             M = 0
             for word in self.hwords:
+                if word == self.this_word:
+                    continue
                 X_d, l_d = self.hwords[word]
                 try:
                     logD += model.score(X_d, l_d)
                     M += 1
                 except:
                     logD += 0
-            if M>0:
-                score = logL - (1 / M * logD)
+            if M>1:
+                score = logL - (1 / (M - 1) * logD)
             else:
                 score = logL
 
