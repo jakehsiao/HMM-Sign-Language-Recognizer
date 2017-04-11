@@ -74,7 +74,7 @@ class SelectorBIC(ModelSelector):
 
         :return: GaussianHMM object
         """
-        #warnings.filterwarnings("ignore", category=DeprecationWarning)
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         models = []
         num_features = self.X.shape[1]
         num_params = []
@@ -101,17 +101,9 @@ class SelectorBIC(ModelSelector):
 
 
 class SelectorDIC(ModelSelector):
-    ''' select best model based on Discriminative Information Criterion
-
-    Biem, Alain. "A model selection criterion for classification: Application to hmm topology optimization."
-    Document Analysis and Recognition, 2003. Proceedings. Seventh International Conference on. IEEE, 2003.
-    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.58.6208&rep=rep1&type=pdf
-    DIC = log(P(X(i)) - 1/(M-1)SUM(log(P(X(all but i))
-    '''
-
+    
     def select(self):
-        #warnings.filterwarnings("ignore", category=DeprecationWarning)
-
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         models = []
         for n in range(self.min_n_components, self.max_n_components+1):
             models.append(self.base_model(n))
@@ -135,7 +127,10 @@ class SelectorDIC(ModelSelector):
                     M += 1
                 except:
                     logD += 0
-            score = logL - (1 / M * logD)
+            if M>0:
+                score = logL - (1 / M * logD)
+            else:
+                score = logL
 
             if score > best_score:
                 best_score = score
@@ -150,14 +145,18 @@ class SelectorCV(ModelSelector):
     '''
 
     def select(self):
-        #warnings.filterwarnings("ignore", category=DeprecationWarning)
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         models = []
         for n in range(self.min_n_components, self.max_n_components+1):
             models.append(self.base_model(n))  # get the models
 
-        kf = KFold() # define the Kfold
+        if len(self.sequences) < 2:
+            return None
+
+        kf = KFold(n_splits=2) # define the Kfold
         indexes = kf.split(self.sequences)  # store the splitted indexes in a var         
-        best_err = float("-inf")
+        
+        best_score = float("-inf")
         best_model = models[0]
 
         for model in models:
@@ -172,7 +171,10 @@ class SelectorCV(ModelSelector):
                     count += 1 # add 1 to count in order to calc the avg
                 except:
                     score += 0 # add nothing to score if model failed to fit the data
-            score /= count
+            if count>0:
+                score /= count
+            else:
+                score = float("-inf")
 
             if score > best_score:
                 best_score = score
