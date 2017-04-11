@@ -29,7 +29,7 @@ class ModelSelector(object):
         self.verbose = verbose
 
     def select(self):
-        raise NotImplementedError
+        return
 
     def base_model(self, num_states):
         # with warnings.catch_warnings():
@@ -74,10 +74,30 @@ class SelectorBIC(ModelSelector):
 
         :return: GaussianHMM object
         """
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        #warnings.filterwarnings("ignore", category=DeprecationWarning)
+        models = []
+        num_features = self.X.shape[1]
+        num_params = []
+        for n in range(self.min_n_components, self.max_n_components+1):
+            models.append(self.base_model(n))
+            num_param = n * (num_features * 2 + 1)
+            num_params.append(num_param)
 
-        # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        best_score = float("inf")
+        best_model = models[0]
+        for model, p in zip(models, num_params):
+            try:
+                model.fit(self.X, self.lengths)
+                logL = model.score(self.X, self.lengths)
+                N = len(self.X)
+                score = -2 * logL + p * np.log(N) 
+            except:
+                score = float("inf")
+            if score < best_score:
+                best_score = score
+                best_model = model
+        return best_model
+
 
 
 class SelectorDIC(ModelSelector):
@@ -90,10 +110,38 @@ class SelectorDIC(ModelSelector):
     '''
 
     def select(self):
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        #warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        models = []
+        for n in range(self.min_n_components, self.max_n_components+1):
+            models.append(self.base_model(n))
+            
+        best_score = float("-inf")
+        best_model = models[0]
+        for model in models:
+            logL = float("-inf")
+            try:
+                model.fit(self.X, self.lengths)
+                logL = model.score(self.X, self.lengths)
+            except:
+                logL = float("-inf")
+
+            logD = 0
+            M = 0
+            for word in self.hwords:
+                X_d, l_d = self.hwords[word]
+                try:
+                    logD += model.score(X_d, l_d)
+                    M += 1
+                except:
+                    logD += 0
+            score = logL - (1 / M * logD)
+
+            if score > best_score:
+                best_score = score
+                best_model = model
+        return best_model
+
 
 
 class SelectorCV(ModelSelector):
@@ -102,7 +150,33 @@ class SelectorCV(ModelSelector):
     '''
 
     def select(self):
-        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        #warnings.filterwarnings("ignore", category=DeprecationWarning)
+        models = []
+        for n in range(self.min_n_components, self.max_n_components+1):
+            models.append(self.base_model(n))  # get the models
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        kf = KFold() # define the Kfold
+        indexes = kf.split(self.sequences)  # store the splitted indexes in a var         
+        best_err = float("-inf")
+        best_model = models[0]
+
+        for model in models:
+            score = 0
+            count = 0
+            for train_idx, test_idx in indexes:
+                X_train, l_train = combine_sequences(train_idx, self.sequences)
+                X_test, l_test = combine_sequences(test_idx, self.sequences) # get the data
+                try:
+                    model.fit(X_train, l_train)
+                    score += model.score(X_test, l_test) # add the test result to score
+                    count += 1 # add 1 to count in order to calc the avg
+                except:
+                    score += 0 # add nothing to score if model failed to fit the data
+            score /= count
+
+            if score > best_score:
+                best_score = score
+                best_model = model
+        return best_model
+
+        
