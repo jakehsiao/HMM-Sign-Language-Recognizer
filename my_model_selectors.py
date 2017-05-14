@@ -81,7 +81,7 @@ class SelectorBIC(ModelSelector):
         for n in range(self.min_n_components, self.max_n_components+1):
             models.append(self.base_model(n))
             num_param = n * (num_features * 2 + 1)
-            num_params.append(num_param)
+            num_params.append(num_param)  # get the number of parameters
 
         best_score = float("inf")
         best_model = models[0]
@@ -115,11 +115,13 @@ class SelectorDIC(ModelSelector):
             try:
                 model.fit(self.X, self.lengths)
                 logL = model.score(self.X, self.lengths)
+                # first, get the score of model for current word
             except:
                 logL = float("-inf")
 
             logD = 0
             M = 0
+            # then, get the score of the same model for other words
             for word in self.hwords:
                 if word == self.this_word:
                     continue
